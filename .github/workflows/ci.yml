@@ -1,0 +1,83 @@
+# Integration continue : elle tourne des la tranche 0, sur un projet presque
+# vide. C'est voulu — une chaine ajoutee "plus tard" n'est jamais ajoutee, et
+# elle est verte au moment ou elle a le moins de raisons d'etre rouge.
+
+name: Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend — ruff + pytest
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rivdinde
+          POSTGRES_PASSWORD: rivdinde
+          POSTGRES_DB: rivdinde_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rivdinde"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # La meme version qu'en local : trois versions differentes entre le
+          # poste, l'integration et l'image Docker, c'est le "ca marchait chez
+          # moi" garanti.
+          python-version: "3.14"
+          cache: pip
+
+      - name: Installer les dependances
+        run: pip install -r requirements-dev.txt
+
+      - name: Verifier le style et les erreurs evidentes
+        run: ruff check .
+
+      - name: Lancer les tests
+        env:
+          DATABASE_URL: postgresql://rivdinde:rivdinde@localhost:5432/rivdinde_test
+          DJANGO_SECRET_KEY: cle-de-test-sans-valeur
+          DEBUG: "true"
+        run: pytest -q
+
+  frontend:
+    name: Front web — types + build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Version a support long terme. Le poste tourne sur plus recent :
+          # compiler sur les deux verifie gratuitement qu'on ne depend
+          # d'aucune nouveaute.
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-web/package-lock.json
+
+      # `npm ci` exige un package-lock.json. Tant qu'il n'existe pas (premier
+      # commit), on retombe sur `npm install` plutot que d'echouer.
+      - name: Installer les dependances
+        run: npm ci || npm install
+
+      - name: Compiler
+        run: npm run build

@@ -1,0 +1,26 @@
+# Dependances de production. Les outils de developpement sont dans
+# requirements-dev.txt, pour que l'image Docker reste legere.
+
+Django>=5.1,<6.0
+djangorestframework>=3.15,<4.0
+
+# Jetons JWT : inscription, connexion, rafraichissement. Le standard de fait
+# cote DRF, et l'equivalent direct du passport-jwt du projet banque.
+djangorestframework-simplejwt>=5.3,<6.0
+django-cors-headers>=4.4,<5.0
+dj-database-url>=2.2,<3.0
+python-dotenv>=1.0,<2.0
+psycopg[binary]>=3.2,<4.0
+
+# Traitement des images televersees : verification du contenu reel du fichier,
+# retrait des metadonnees EXIF (coordonnees GPS du vendeur), image de repli du
+# jeu de demonstration. Voir 03-contrats/contrat-medias.md.
+pillow>=10.4,<12.0
+
+# Stockage des images en ligne. Le disque du conteneur est efface a chaque
+# redeploiement (D-19) : sans stockage externe, les photos des vendeurs
+# disparaissent. Sans configuration, le code retombe sur le disque local et
+# la bibliotheque n'est jamais appelee (D-18).
+cloudinary>=1.40,<2.0
+gunicorn>=23.0,<24.0
+whitenoise>=6.7,<7.0

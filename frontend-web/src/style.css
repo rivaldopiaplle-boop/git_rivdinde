@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Les jetons de la marque, echantillonnes dans le logo lui-meme.
+   Reference : plan-organisation/04-maquettes/identite-visuelle.html § 4.
+
+   Declares dans @theme, ils deviennent des classes utilitaires : bg-encre,
+   text-marque, border-peluche… Une couleur ecrite a un seul endroit.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-encre: #2a160f;
+  --color-encre-2: #3d2016;
+  --color-encre-3: #4a2718;
+  --color-marque: #ea8c2a;
+  --color-marque-fonce: #d46f1d;
+  --color-marque-clair: #f0a344;
+  --color-peluche: #9e5329;
+  --color-peluche-fonce: #592d19;
+
+  --color-ardoise: #14181f;
+  --color-atelier: #f5f6f8;
+
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --radius-carte: 1rem;
+
+  /* Micro-animations : 150 a 200 ms. En dessous ca saute, au-dessus ca traine
+     (design-system.md § 9). */
+  --animate-apparition: apparition 0.2s ease-out;
+  --animate-glissement: glissement 0.18s ease-out;
+}
+
+@keyframes apparition {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes glissement {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    color: #f3e7dd;
+    background: radial-gradient(1100px 620px at 50% -10%, var(--color-encre-3), var(--color-encre));
+  }
+
+  #app {
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* Un anneau de focus visible partout : c'est la seule facon de naviguer au
+     clavier, et c'est ce qu'un recruteur attentif a l'accessibilite regarde. */
+  :focus-visible {
+    outline: 2px solid var(--color-marque);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* Le champ de formulaire, une seule fois pour toute l'application. */
+  .champ {
+    @apply w-full rounded-xl border border-[#5a3826] bg-[#23130d] px-3.5 py-2.5
+           text-[15px] text-[#f3e7dd] transition-colors duration-150
+           placeholder:text-[#7c6459] focus:border-marque focus:outline-none;
+  }
+  .champ-erreur {
+    @apply border-red-800 bg-red-950/30;
+  }
+
+  .bouton-marque {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-marque px-5 py-3
+           text-[15px] font-bold text-encre transition-all duration-150
+           hover:bg-marque-clair active:scale-[0.985]
+           disabled:cursor-progress disabled:opacity-60;
+  }
+
+  .bouton-discret {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#5a3826]
+           px-4 py-2.5 text-sm text-[#c9b4a6] transition-colors duration-150
+           hover:border-marque hover:text-marque-clair;
+  }
+
+  /* Le champ des espaces de travail : fond clair, contrairement aux ecrans
+     publics qui sont sur fond de marque. */
+  .champ-clair {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[14px]
+           text-slate-900 transition-colors duration-150 focus:border-slate-400
+           focus:outline-none;
+  }
+
+  .carte-sombre {
+    @apply rounded-2xl border border-encre-3 bg-encre/60 backdrop-blur-sm;
+  }
+}

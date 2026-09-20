@@ -1,0 +1,12 @@
+# Configuration de ruff, qui fait a la fois le formatage et la verification.
+# Un seul outil plutot que black + flake8 + isort : moins a installer, moins a
+# accorder entre eux, et la meme commande en local et dans l'integration.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [".venv", "migrations", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+ignore = ["E501"]

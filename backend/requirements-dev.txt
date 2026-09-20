@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Verification et tests. Installes en local et dans l'integration continue,
+# jamais dans l'image deployee.
+ruff>=0.6
+pytest>=8.0
+pytest-django>=4.9

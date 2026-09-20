@@ -1,0 +1,51 @@
+# Les services qui doivent tourner pour developper. Ni l'API ni le front n'y
+# figurent : en developpement ils tournent hors conteneur, avec le
+# rechargement a chaud. C'est `demarrer.py` qui orchestre l'ensemble.
+#
+#   docker compose up -d      demarrer
+#   docker compose down       arreter (les donnees restent)
+#   docker compose down -v    tout effacer, base comprise
+#
+# ── Pourquoi des ports decales ───────────────────────────────────────────
+# Le projet banque occupe deja 5432 (Postgres), 1025 et 8025 (Mailpit) sur
+# cette machine. RivDinde prend donc 5433, 1026 et 8026 : les deux projets
+# tournent en meme temps sans qu'on ait a en arreter un.
+#
+# Seul le port de l'HOTE change. A l'interieur du conteneur, Postgres ecoute
+# toujours sur 5432 — c'est pour cela que la chaine de connexion du
+# Dockerfile ne bouge pas, alors que celle de backend/.env pointe sur 5433.
+
+services:
+  base:
+    image: postgres:16-alpine
+    container_name: rivdinde-base
+    environment:
+      POSTGRES_USER: rivdinde
+      POSTGRES_PASSWORD: rivdinde
+      POSTGRES_DB: rivdinde
+    ports:
+      - "5433:5432"
+    volumes:
+      - donnees-postgres:/var/lib/postgresql/data
+    # Sans cette sonde, `demarrer.py` lancerait les migrations avant que
+    # Postgres accepte les connexions — l'erreur arrive alors dix secondes
+    # plus tard sous une forme incomprehensible.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rivdinde -d rivdinde"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  courriels:
+    # Mailpit : un vrai serveur SMTP qui accepte tout et ne delivre rien.
+    # Boite de reception : http://localhost:8025 — on y lit exactement le
+    # message qu'aurait recu le destinataire, sans qu'aucun courriel ne
+    # quitte la machine. Aucun compte, aucune inscription, aucun risque.
+    image: axllent/mailpit:latest
+    container_name: rivdinde-courriels
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+
+volumes:
+  donnees-postgres:
