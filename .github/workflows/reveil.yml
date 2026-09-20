@@ -1,0 +1,83 @@
+# Garder la vitrine éveillée le jour d'une démonstration.
+#
+# Le service gratuit de Render s'endort après quinze minutes sans trafic et met
+# une minute à repartir. Un recruteur qui ouvre le lien pendant ce temps voit
+# une page blanche et n'insiste pas.
+#
+# **Q-1 : « les données ne sont pas toujours en ligne ».** C'était le sommeil.
+#
+# La tâche tourne désormais **de 7 h à 22 h (heure de Paris), toutes les dix
+# minutes**. Ce n'est pas un compromis au hasard : l'offre gratuite de Render
+# donne 750 heures par mois ; éveillée jour et nuit, l'API en consommerait
+# 744 et n'en laisserait aucune au moindre autre service. Quinze heures par
+# jour en coûtent 465 — la vitrine est vivante quand quelqu'un peut l'ouvrir,
+# et elle dort quand personne ne regarde.
+#
+# La nuit, le catalogue gère lui-même le réveil : il le dit à l'écran et
+# réessaie pendant une minute et demie, au lieu d'afficher une grille vide.
+#
+# Sans la variable URL_API_VITRINE, la tâche planifiée s'arrête en silence :
+# un échec toutes les dix minutes remplirait la boîte de courriels.
+#
+# Cette tâche vit dans le dépôt public, et non dans celui qui porte le code :
+# les minutes y sont gratuites, alors qu'elles seraient décomptées du quota sur
+# un dépôt privé. Elle n'a besoin que de l'adresse de la sonde, pas du code.
+#
+#   Lancer à la main : onglet Actions → Réveil de la vitrine → Run workflow
+
+name: Réveil de la vitrine
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub compte en UTC : 5 h – 20 h UTC, c'est 7 h – 22 h à Paris l'été.
+    - cron: "*/10 7-18 * * 1-5"
+
+jobs:
+  reveiller:
+    name: Appeler la sonde de santé
+    runs-on: ubuntu-latest
+    # Les minutes d'Actions sont GRATUITES sur un dépôt public et COMPTÉES sur
+    # un dépôt privé (R-9). Quatre-vingt-dix réveils par jour sur le privé
+    # mangeraient le quota mensuel pour rien : la vitrine est servie depuis le
+    # public, c'est lui qui la réveille. Lancé à la main, le travail tourne
+    # partout — c'est le déclenchement planifié qu'on restreint.
+    if: github.event_name != 'schedule' || github.event.repository.private == false
+    steps:
+      - name: Réveiller l'API
+        run: |
+          set -e
+          adresse="${{ vars.URL_API_VITRINE }}"
+          if [ -z "$adresse" ]; then
+            echo "Variable de dépôt URL_API_VITRINE absente."
+            echo "Réglages → Secrets and variables → Actions → Variables."
+            # Lancée à la main, l'absence est une erreur à voir ; planifiée,
+            # elle échouerait 90 fois par jour et noierait les vrais échecs.
+            [ "${{ github.event_name }}" = "schedule" ] && exit 0
+            exit 1
+          fi
+          # L'adresse peut être donnée avec ou sans le préfixe de l'API, avec
+          # ou sans barre oblique finale. Les trois formes se rencontrent, et
+          # la mauvaise rend 404 sans rien réveiller du tout (R-9).
+          adresse="${adresse%/}"
+          case "$adresse" in
+            */api/v1) sonde="$adresse/sante" ;;
+            *) sonde="$adresse/api/v1/sante" ;;
+          esac
+          echo "Appel de $sonde"
+          # --max-time 90 : un réveil à froid dépasse largement le délai par
+          # défaut de curl, et l'échec ne voudrait alors rien dire.
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$sonde")
+          echo "Réponse : $code"
+          if [ "$code" = "404" ]; then
+            # Dernière chance : l'adresse portait peut-être déjà autre chose.
+            echo "404 — nouvel essai sur $adresse/sante"
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$adresse/sante")
+            echo "Réponse : $code"
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::La sonde de santé n'a pas répondu 200."
+            echo "Vérifie la variable URL_API_VITRINE : elle doit porter l'adresse"
+            echo "de l'API, par exemple https://rivdinde-api.onrender.com/api/v1"
+            exit 1
+          fi
